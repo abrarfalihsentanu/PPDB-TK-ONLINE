@@ -109,6 +109,7 @@ class PendaftaranModel extends Model
 
     /**
      * Get pendaftaran with relations
+     * Returns QueryBuilder object for chaining, or single object if $id provided
      */
     public function getWithRelations($id = null)
     {
@@ -120,7 +121,8 @@ class PendaftaranModel extends Model
             return $builder->find($id);
         }
 
-        return $builder->findAll();
+        // Return builder for method chaining
+        return $builder;
     }
 
     /**

@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS migrations;
+DROP TABLE IF EXISTS pembayaran;
+DROP TABLE IF EXISTS dokumen;
+DROP TABLE IF EXISTS orang_tua;
+DROP TABLE IF EXISTS pendaftaran;
+DROP TABLE IF EXISTS tahun_ajaran;
+DROP TABLE IF EXISTS users;
