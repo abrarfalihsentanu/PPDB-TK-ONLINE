@@ -58,6 +58,9 @@ $routes->group('admin', ['filter' => ['auth', 'role:admin']], function ($routes)
     // Pendaftaran (List & Detail)
     $routes->get('pendaftaran', 'Admin\Pendaftaran::index');
     $routes->get('pendaftaran/view/(:num)', 'Admin\Pendaftaran::view/$1');
+    $routes->get('pendaftaran/accept/(:num)', 'Admin\Pendaftaran::accept/$1');
+    $routes->post('pendaftaran/reject/(:num)', 'Admin\Pendaftaran::reject/$1');
+    $routes->post('pendaftaran/(:num)/status', 'Admin\Pendaftaran::updateStatus/$1');
 
     // Verifikasi Pembayaran
     $routes->get('pembayaran', 'Admin\Pembayaran::index');
