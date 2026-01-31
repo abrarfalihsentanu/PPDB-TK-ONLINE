@@ -36,7 +36,7 @@ $routes->group('auth', function ($routes) {
 // ============================================
 // ADMIN ROUTES (Require Auth & Admin Role)
 // ============================================
-$routes->group('admin', ['filter' => 'auth'], function ($routes) {
+$routes->group('admin', ['filter' => ['auth', 'role:admin']], function ($routes) {
     // Dashboard
     $routes->get('dashboard', 'Admin\Dashboard::index');
 
@@ -82,12 +82,13 @@ $routes->group('admin', ['filter' => 'auth'], function ($routes) {
 // ============================================
 // USER ROUTES (Require Auth & Orang Tua Role)
 // ============================================
-$routes->group('user', ['filter' => 'auth'], function ($routes) {
+$routes->group('user', ['filter' => ['auth', 'role:orang_tua']], function ($routes) {
     // Dashboard
     $routes->get('dashboard', 'User\Dashboard::index');
 
     // Pendaftaran
     $routes->get('pendaftaran/create', 'User\Pendaftaran::create');
+    $routes->get('pendaftaran/form/(:num)/step/(:num)', 'User\Pendaftaran::form/$1/$2');
     $routes->post('pendaftaran/store-data-siswa', 'User\Pendaftaran::storeDataSiswa');
     $routes->post('pendaftaran/store-data-orangtua/(:num)', 'User\Pendaftaran::storeDataOrangtua/$1');
     $routes->post('pendaftaran/upload-dokumen/(:num)', 'User\Pendaftaran::uploadDokumen/$1');
@@ -97,6 +98,7 @@ $routes->group('user', ['filter' => 'auth'], function ($routes) {
     // Edit Pendaftaran
     $routes->get('pendaftaran/edit/(:num)', 'User\Pendaftaran::edit/$1');
     $routes->post('pendaftaran/update/(:num)', 'User\Pendaftaran::update/$1');
+    $routes->get('pendaftaran/view/(:num)', 'User\Pendaftaran::view/$1');
 
     // Pembayaran
     $routes->get('pembayaran', 'User\Pembayaran::index');
