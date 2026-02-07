@@ -94,12 +94,10 @@ if ($role === 'admin') {
             <li class="menu-item <?= (strpos($currentUri, 'admin/pembayaran') !== false) ? 'active' : '' ?>">
                 <a href="<?= base_url('admin/pembayaran') ?>" class="menu-link">
                     <i class="menu-icon ri-bank-card-line"></i>
-                    <div class="d-flex align-items-center justify-content-between w-100">
-                        <span>Verifikasi Pembayaran</span>
-                        <?php if ($notificationCounts['pembayaran_pending'] > 0): ?>
-                            <span class="badge bg-danger rounded-pill ms-2"><?= $notificationCounts['pembayaran_pending'] ?></span>
-                        <?php endif; ?>
-                    </div>
+                    <span>Verifikasi Pembayaran</span>
+                    <?php if ($notificationCounts['pembayaran_pending'] > 0): ?>
+                        <span class="badge bg-danger rounded-pill ms-auto"><?= $notificationCounts['pembayaran_pending'] ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
 
@@ -107,12 +105,10 @@ if ($role === 'admin') {
             <li class="menu-item <?= (strpos($currentUri, 'admin/verifikasi') !== false) ? 'active' : '' ?>">
                 <a href="<?= base_url('admin/verifikasi') ?>" class="menu-link">
                     <i class="menu-icon ri-file-check-line"></i>
-                    <div class="d-flex align-items-center justify-content-between w-100">
-                        <span>Verifikasi Berkas</span>
-                        <?php if ($notificationCounts['dokumen_pending'] > 0): ?>
-                            <span class="badge bg-warning rounded-pill ms-2"><?= $notificationCounts['dokumen_pending'] ?></span>
-                        <?php endif; ?>
-                    </div>
+                    <span>Verifikasi Berkas</span>
+                    <?php if ($notificationCounts['dokumen_pending'] > 0): ?>
+                        <span class="badge bg-warning rounded-pill ms-auto"><?= $notificationCounts['dokumen_pending'] ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
 
@@ -120,12 +116,10 @@ if ($role === 'admin') {
             <li class="menu-item <?= (strpos($currentUri, 'admin/penerimaan') !== false) ? 'active' : '' ?>">
                 <a href="<?= base_url('admin/penerimaan') ?>" class="menu-link">
                     <i class="menu-icon ri-checkbox-circle-line"></i>
-                    <div class="d-flex align-items-center justify-content-between w-100">
-                        <span>Penerimaan Siswa</span>
-                        <?php if ($notificationCounts['penerimaan_pending'] > 0): ?>
-                            <span class="badge bg-info rounded-pill ms-2"><?= $notificationCounts['penerimaan_pending'] ?></span>
-                        <?php endif; ?>
-                    </div>
+                    <span>Penerimaan Siswa</span>
+                    <?php if ($notificationCounts['penerimaan_pending'] > 0): ?>
+                        <span class="badge bg-info rounded-pill ms-auto"><?= $notificationCounts['penerimaan_pending'] ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
 
