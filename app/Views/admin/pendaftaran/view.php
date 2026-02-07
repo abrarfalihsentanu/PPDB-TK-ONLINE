@@ -30,15 +30,50 @@
 
         <div class="card mb-3">
             <div class="card-body">
-                <h5>Dokumen</h5>
+                <h5><i class="ri-file-line me-2"></i>Dokumen</h5>
                 <?php if (!empty($dokumen)): ?>
-                    <ul>
+                    <div class="list-group list-group-flush">
                         <?php foreach ($dokumen as $d): ?>
-                            <li><?= esc($d->jenis_dokumen) ?> - <a href="<?= base_url($d->path_file) ?>" target="_blank">Lihat</a> (<?= esc($d->status_verifikasi) ?>)</li>
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <p class="mb-1">
+                                            <i class="ri-file-text-line me-2"></i>
+                                            <strong><?php
+                                                    $jenisDok = [
+                                                        'kk' => 'Kartu Keluarga',
+                                                        'akta' => 'Akta Kelahiran',
+                                                        'foto' => 'Foto Siswa'
+                                                    ];
+                                                    echo $jenisDok[$d->jenis_dokumen] ?? ucfirst($d->jenis_dokumen);
+                                                    ?></strong>
+                                        </p>
+                                        <small class="text-muted">
+                                            <?php
+                                            $badge = match ($d->status_verifikasi) {
+                                                'pending' => ['bg' => 'warning', 'text' => 'Menunggu Verifikasi'],
+                                                'approved' => ['bg' => 'success', 'text' => 'Disetujui'],
+                                                'rejected' => ['bg' => 'danger', 'text' => 'Ditolak'],
+                                                default => ['bg' => 'secondary', 'text' => ucfirst($d->status_verifikasi)]
+                                            };
+                                            ?>
+                                            <span class="badge bg-<?= $badge['bg'] ?>"><?= $badge['text'] ?></span>
+                                        </small>
+                                    </div>
+                                    <div>
+                                        <a href="<?= base_url('files/preview/dokumen/' . $d->id) ?>" class="btn btn-sm btn-info" target="_blank">
+                                            <i class="ri-eye-line"></i> Lihat
+                                        </a>
+                                        <a href="<?= base_url('files/download/dokumen/' . $d->id) ?>" class="btn btn-sm btn-secondary">
+                                            <i class="ri-download-line"></i> Download
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         <?php endforeach; ?>
-                    </ul>
+                    </div>
                 <?php else: ?>
-                    <p class="text-muted">Belum ada dokumen.</p>
+                    <p class="text-muted"><i class="ri-information-line me-2"></i>Belum ada dokumen.</p>
                 <?php endif; ?>
             </div>
         </div>
