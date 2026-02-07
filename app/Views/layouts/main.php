@@ -1,9 +1,5 @@
 <!doctype html>
-<?php
-$role = session()->get('role');
-$isHorizontal = $role === 'orang_tua';
-?>
-<html lang="id" class="<?= $isHorizontal ? 'layout-navbar-fixed layout-menu-fixed layout-compact' : 'layout-menu-fixed layout-compact' ?>" data-assets-path="<?= base_url('assets/') ?>">
+<html lang="id" class="layout-menu-fixed layout-compact" data-assets-path="<?= base_url('assets/') ?>">
 
 <head>
     <meta charset="utf-8" />
@@ -94,78 +90,6 @@ $isHorizontal = $role === 'orang_tua';
         .loading-overlay.show {
             display: flex;
         }
-
-        /* Horizontal Navbar Styling */
-        .layout-horizontal .layout-navbar {
-            background: var(--bs-body-bg);
-            border-bottom: 1px solid var(--bs-border-color);
-        }
-
-        /* Horizontal Menu Container */
-        .layout-horizontal .layout-menu-horizontal {
-            width: 100% !important;
-            background: var(--bs-body-bg) !important;
-            border-bottom: 1px solid var(--bs-border-color) !important;
-            position: static !important;
-            height: auto !important;
-            display: block !important;
-            padding: 0 !important;
-        }
-
-        .layout-horizontal .layout-menu-horizontal .container-xxl {
-            display: flex !important;
-            height: 100% !important;
-        }
-
-        .layout-horizontal .menu-horizontal .menu-inner {
-            display: flex !important;
-            gap: 0.5rem !important;
-            flex-wrap: nowrap !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            list-style: none !important;
-            width: 100% !important;
-        }
-
-        .layout-horizontal .menu-horizontal .menu-item {
-            position: relative !important;
-            min-width: max-content !important;
-            display: block !important;
-        }
-
-        .layout-horizontal .menu-horizontal .menu-item a.menu-link {
-            padding: 0.75rem 1.25rem !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 0.5rem !important;
-            color: var(--bs-body-color) !important;
-            text-decoration: none !important;
-            border-radius: 0.375rem !important;
-            transition: all 0.2s ease-in-out !important;
-        }
-
-        .layout-horizontal .menu-horizontal .menu-item a.menu-link:hover {
-            background-color: var(--bs-gray-200) !important;
-            color: var(--bs-body-color) !important;
-        }
-
-        .layout-horizontal .menu-horizontal .menu-item.active a.menu-link {
-            background-color: var(--bs-primary) !important;
-            color: white !important;
-        }
-
-        .layout-horizontal .menu-horizontal .menu-icon {
-            font-size: 1.25rem !important;
-        }
-
-        [data-bs-theme='dark'] .layout-horizontal .menu-horizontal .menu-item a.menu-link {
-            color: var(--bs-body-color) !important;
-        }
-
-        [data-bs-theme='dark'] .layout-horizontal .menu-horizontal .menu-item a.menu-link:hover {
-            background-color: var(--bs-gray-800) !important;
-            color: var(--bs-body-color) !important;
-        }
     </style>
 
     <?= $this->renderSection('css') ?>
@@ -180,22 +104,15 @@ $isHorizontal = $role === 'orang_tua';
     </div>
 
     <!-- Layout wrapper -->
-    <div class="layout-wrapper <?= $isHorizontal ? 'layout-navbar-full layout-horizontal layout-without-menu' : 'layout-content-navbar' ?>">
+    <div class="layout-wrapper layout-content-navbar">
         <div class="layout-container">
-            <?php if (!$isHorizontal): ?>
-                <!-- Sidebar (Admin) -->
-                <?= $this->include('layouts/sidebar') ?>
-            <?php endif; ?>
+            <!-- Sidebar -->
+            <?= $this->include('layouts/sidebar') ?>
 
             <!-- Layout container -->
             <div class="layout-page">
-                <?php if ($isHorizontal): ?>
-                    <!-- Horizontal Navbar (Orang Tua) -->
-                    <?= $this->include('layouts/navbar_horizontal') ?>
-                <?php else: ?>
-                    <!-- Vertical Navbar (Admin) -->
-                    <?= $this->include('layouts/navbar') ?>
-                <?php endif; ?>
+                <!-- Navbar -->
+                <?= $this->include('layouts/navbar') ?>
 
                 <!-- Content wrapper -->
                 <div class="content-wrapper">
