@@ -35,6 +35,24 @@ if (!function_exists('get_user_role')) {
     }
 }
 
+if (!function_exists('get_user_email')) {
+    /**
+     * Get user email dari database berdasarkan user_id di session
+     */
+    function get_user_email()
+    {
+        $userId = session()->get('user_id');
+        if (!$userId) {
+            return 'unknown';
+        }
+
+        $userModel = new \App\Models\UserModel();
+        $user = $userModel->find($userId);
+
+        return $user ? $user->email : 'unknown';
+    }
+}
+
 if (!function_exists('is_admin')) {
     /**
      * Cek apakah user adalah admin
