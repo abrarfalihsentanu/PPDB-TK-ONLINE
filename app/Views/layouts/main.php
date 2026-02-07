@@ -101,47 +101,70 @@ $isHorizontal = $role === 'orang_tua';
             border-bottom: 1px solid var(--bs-border-color);
         }
 
+        /* Horizontal Menu Container */
+        .layout-horizontal .layout-menu-horizontal {
+            width: 100% !important;
+            background: var(--bs-body-bg) !important;
+            border-bottom: 1px solid var(--bs-border-color) !important;
+            position: static !important;
+            height: auto !important;
+            display: block !important;
+            padding: 0 !important;
+        }
+
+        .layout-horizontal .layout-menu-horizontal .container-xxl {
+            display: flex !important;
+            height: 100% !important;
+        }
+
         .layout-horizontal .menu-horizontal .menu-inner {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: nowrap;
+            display: flex !important;
+            gap: 0.5rem !important;
+            flex-wrap: nowrap !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            list-style: none !important;
+            width: 100% !important;
         }
 
         .layout-horizontal .menu-horizontal .menu-item {
-            position: relative;
-            min-width: max-content;
+            position: relative !important;
+            min-width: max-content !important;
+            display: block !important;
         }
 
         .layout-horizontal .menu-horizontal .menu-item a.menu-link {
-            padding: 0.75rem 1.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--bs-body-color);
-            text-decoration: none;
-            border-radius: 0.375rem;
-            transition: all 0.2s ease-in-out;
+            padding: 0.75rem 1.25rem !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.5rem !important;
+            color: var(--bs-body-color) !important;
+            text-decoration: none !important;
+            border-radius: 0.375rem !important;
+            transition: all 0.2s ease-in-out !important;
         }
 
         .layout-horizontal .menu-horizontal .menu-item a.menu-link:hover {
-            background-color: var(--bs-gray-200);
+            background-color: var(--bs-gray-200) !important;
+            color: var(--bs-body-color) !important;
         }
 
         .layout-horizontal .menu-horizontal .menu-item.active a.menu-link {
-            background-color: var(--bs-primary);
-            color: white;
+            background-color: var(--bs-primary) !important;
+            color: white !important;
         }
 
         .layout-horizontal .menu-horizontal .menu-icon {
-            font-size: 1.25rem;
+            font-size: 1.25rem !important;
         }
 
         [data-bs-theme='dark'] .layout-horizontal .menu-horizontal .menu-item a.menu-link {
-            color: var(--bs-body-color);
+            color: var(--bs-body-color) !important;
         }
 
         [data-bs-theme='dark'] .layout-horizontal .menu-horizontal .menu-item a.menu-link:hover {
-            background-color: var(--bs-gray-800);
+            background-color: var(--bs-gray-800) !important;
+            color: var(--bs-body-color) !important;
         }
     </style>
 
