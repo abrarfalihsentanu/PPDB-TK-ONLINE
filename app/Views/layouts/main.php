@@ -1,5 +1,9 @@
 <!doctype html>
-<html lang="id" class="layout-menu-fixed layout-compact" data-assets-path="<?= base_url('assets/') ?>">
+<?php
+$role = session()->get('role');
+$isHorizontal = $role === 'orang_tua';
+?>
+<html lang="id" class="<?= $isHorizontal ? 'layout-navbar-fixed layout-menu-fixed layout-compact' : 'layout-menu-fixed layout-compact' ?>" data-assets-path="<?= base_url('assets/') ?>">
 
 <head>
     <meta charset="utf-8" />
@@ -90,6 +94,55 @@
         .loading-overlay.show {
             display: flex;
         }
+
+        /* Horizontal Navbar Styling */
+        .layout-horizontal .layout-navbar {
+            background: var(--bs-body-bg);
+            border-bottom: 1px solid var(--bs-border-color);
+        }
+
+        .layout-horizontal .menu-horizontal .menu-inner {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: nowrap;
+        }
+
+        .layout-horizontal .menu-horizontal .menu-item {
+            position: relative;
+            min-width: max-content;
+        }
+
+        .layout-horizontal .menu-horizontal .menu-item a.menu-link {
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--bs-body-color);
+            text-decoration: none;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .layout-horizontal .menu-horizontal .menu-item a.menu-link:hover {
+            background-color: var(--bs-gray-200);
+        }
+
+        .layout-horizontal .menu-horizontal .menu-item.active a.menu-link {
+            background-color: var(--bs-primary);
+            color: white;
+        }
+
+        .layout-horizontal .menu-horizontal .menu-icon {
+            font-size: 1.25rem;
+        }
+
+        [data-bs-theme='dark'] .layout-horizontal .menu-horizontal .menu-item a.menu-link {
+            color: var(--bs-body-color);
+        }
+
+        [data-bs-theme='dark'] .layout-horizontal .menu-horizontal .menu-item a.menu-link:hover {
+            background-color: var(--bs-gray-800);
+        }
     </style>
 
     <?= $this->renderSection('css') ?>
@@ -104,15 +157,22 @@
     </div>
 
     <!-- Layout wrapper -->
-    <div class="layout-wrapper layout-content-navbar">
+    <div class="layout-wrapper <?= $isHorizontal ? 'layout-navbar-full layout-horizontal layout-without-menu' : 'layout-content-navbar' ?>">
         <div class="layout-container">
-            <!-- Sidebar -->
-            <?= $this->include('layouts/sidebar') ?>
+            <?php if (!$isHorizontal): ?>
+                <!-- Sidebar (Admin) -->
+                <?= $this->include('layouts/sidebar') ?>
+            <?php endif; ?>
 
             <!-- Layout container -->
             <div class="layout-page">
-                <!-- Navbar -->
-                <?= $this->include('layouts/navbar') ?>
+                <?php if ($isHorizontal): ?>
+                    <!-- Horizontal Navbar (Orang Tua) -->
+                    <?= $this->include('layouts/navbar_horizontal') ?>
+                <?php else: ?>
+                    <!-- Vertical Navbar (Admin) -->
+                    <?= $this->include('layouts/navbar') ?>
+                <?php endif; ?>
 
                 <!-- Content wrapper -->
                 <div class="content-wrapper">
