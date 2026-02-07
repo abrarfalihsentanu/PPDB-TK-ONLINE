@@ -61,11 +61,12 @@ class FileAccess extends BaseController
         }
 
         // Validasi file path (prevent directory traversal)
-        $filePath = FCPATH . $dokumen->path_file;
+        // Files stored in writable/uploads/dokumen/ at root level, not in public/
+        $filePath = dirname(FCPATH) . '/' . $dokumen->path_file;
 
         // Ensure path is within allowed directory
         $realPath = realpath($filePath);
-        $baseDir = realpath(FCPATH . 'uploads/dokumen/');
+        $baseDir = realpath(dirname(FCPATH) . '/writable/uploads/dokumen/');
 
         if (!$realPath || strpos($realPath, $baseDir) !== 0 || !file_exists($realPath)) {
             return $this->response->setStatusCode(404)->setBody('File tidak ditemukan atau path tidak valid');
@@ -109,11 +110,12 @@ class FileAccess extends BaseController
         }
 
         // Validasi file path
-        $filePath = FCPATH . $pembayaran->bukti_bayar;
+        // Files stored in writable/uploads/pembayaran/ at root level, not in public/
+        $filePath = dirname(FCPATH) . '/' . $pembayaran->bukti_bayar;
 
         // Ensure path is within allowed directory
         $realPath = realpath($filePath);
-        $baseDir = realpath(FCPATH . 'uploads/pembayaran/');
+        $baseDir = realpath(dirname(FCPATH) . '/writable/uploads/pembayaran/');
 
         if (!$realPath || strpos($realPath, $baseDir) !== 0 || !file_exists($realPath)) {
             return $this->response->setStatusCode(404)->setBody('File tidak ditemukan atau path tidak valid');
@@ -157,11 +159,12 @@ class FileAccess extends BaseController
         }
 
         // Validasi file path
-        $filePath = FCPATH . $dokumen->path_file;
+        // Files stored in writable/uploads/dokumen/ at root level, not in public/
+        $filePath = dirname(FCPATH) . '/' . $dokumen->path_file;
 
         // Ensure path is within allowed directory
         $realPath = realpath($filePath);
-        $baseDir = realpath(FCPATH . 'uploads/dokumen/');
+        $baseDir = realpath(dirname(FCPATH) . '/writable/uploads/dokumen/');
 
         if (!$realPath || strpos($realPath, $baseDir) !== 0 || !file_exists($realPath)) {
             return $this->response->setStatusCode(404)->setBody('File tidak ditemukan atau path tidak valid');
@@ -212,11 +215,12 @@ class FileAccess extends BaseController
         }
 
         // Validasi file path
-        $filePath = FCPATH . $pembayaran->bukti_bayar;
+        // Files stored in writable/uploads/pembayaran/ at root level, not in public/
+        $filePath = dirname(FCPATH) . '/' . $pembayaran->bukti_bayar;
 
         // Ensure path is within allowed directory
         $realPath = realpath($filePath);
-        $baseDir = realpath(FCPATH . 'uploads/pembayaran/');
+        $baseDir = realpath(dirname(FCPATH) . '/writable/uploads/pembayaran/');
 
         if (!$realPath || strpos($realPath, $baseDir) !== 0 || !file_exists($realPath)) {
             return $this->response->setStatusCode(404)->setBody('File tidak ditemukan atau path tidak valid');
