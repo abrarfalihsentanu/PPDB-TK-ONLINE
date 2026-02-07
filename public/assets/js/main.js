@@ -136,3 +136,5 @@ document.addEventListener('DOMContentLoaded', function () {
   // Auto update menu collapsed/expanded based on the themeConfig
   window.Helpers.setCollapsed(true, false);
 })();
+
+

@@ -14,7 +14,7 @@ class Auth extends BaseController
     {
         $this->userModel = new UserModel();
         $this->validation = \Config\Services::validation();
-        helper(['auth', 'form']);
+        helper(['auth', 'form', 'cookie']);
     }
 
     /**
@@ -102,13 +102,16 @@ class Auth extends BaseController
      */
     public function logout()
     {
+        // Delete remember me cookie first (faster)
+        delete_cookie('remember_token');
+
         // Destroy session
         session()->destroy();
 
-        // Delete remember me cookie
-        delete_cookie('remember_token');
-
+        // Set success message
         set_message('success', 'Anda telah berhasil logout');
+
+        // Redirect to login immediately
         return redirect()->to('/auth/login');
     }
 

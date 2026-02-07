@@ -89,7 +89,9 @@ $routes->group('user', ['filter' => 'auth'], function ($routes) {
     // Pendaftaran
     $routes->get('pendaftaran/create', 'User\Pendaftaran::create');
     $routes->post('pendaftaran/store-data-siswa', 'User\Pendaftaran::storeDataSiswa');
+    $routes->get('pendaftaran/orangtua/(:num)', 'User\Pendaftaran::orangtua/$1');
     $routes->post('pendaftaran/store-data-orangtua/(:num)', 'User\Pendaftaran::storeDataOrangtua/$1');
+    $routes->get('pendaftaran/upload/(:num)', 'User\Pendaftaran::upload/$1');
     $routes->post('pendaftaran/upload-dokumen/(:num)', 'User\Pendaftaran::uploadDokumen/$1');
     $routes->get('pendaftaran/preview/(:num)', 'User\Pendaftaran::preview/$1');
     $routes->post('pendaftaran/submit/(:num)', 'User\Pendaftaran::submit/$1');
@@ -110,3 +112,20 @@ $routes->group('user', ['filter' => 'auth'], function ($routes) {
 // TEST ROUTE (Development Only)
 // ============================================
 $routes->get('test', 'TestController::index');
+
+// ============================================
+// FILE ACCESS ROUTES (Require Auth)
+// ============================================
+$routes->group('files', ['filter' => 'auth'], function ($routes) {
+    // Download dokumen
+    $routes->get('download/dokumen/(:num)', 'FileAccess::downloadDokumen/$1');
+
+    // Download bukti bayar
+    $routes->get('download/pembayaran/(:num)', 'FileAccess::downloadBuktiBayar/$1');
+
+    // Preview dokumen
+    $routes->get('preview/dokumen/(:num)', 'FileAccess::previewDokumen/$1');
+
+    // Preview bukti bayar
+    $routes->get('preview/pembayaran/(:num)', 'FileAccess::previewBuktiBayar/$1');
+});

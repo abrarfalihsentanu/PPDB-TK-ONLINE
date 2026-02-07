@@ -17,7 +17,10 @@ class UserModel extends Model
         'email',
         'password',
         'role',
-        'status'
+        'status',
+        'reset_token',
+        'reset_token_expiry',
+        'remember_token'
     ];
 
     // Dates

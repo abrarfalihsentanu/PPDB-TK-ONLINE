@@ -109,6 +109,7 @@ class PendaftaranModel extends Model
 
     /**
      * Get pendaftaran with relations
+     * Returns QueryBuilder object for chaining, or single object if $id provided
      */
     public function getWithRelations($id = null)
     {
@@ -120,7 +121,8 @@ class PendaftaranModel extends Model
             return $builder->find($id);
         }
 
-        return $builder->findAll();
+        // Return builder for method chaining
+        return $builder;
     }
 
     /**
@@ -187,5 +189,155 @@ class PendaftaranModel extends Model
         // Hanya bisa edit jika milik user sendiri dan status masih draft atau pending
         return $pendaftaran->user_id == $userId
             && in_array($pendaftaran->status_pendaftaran, ['draft', 'pending']);
+    }
+    /**
+     * Get pending pembayaran verification untuk notifikasi
+     */
+    public function getPendingPaymentVerification($limit = 5)
+    {
+        return $this->select('pendaftaran.*, users.email, pembayaran.id as pembayaran_id')
+            ->join('pembayaran', 'pembayaran.pendaftaran_id = pendaftaran.id', 'left')
+            ->join('users', 'users.id = pendaftaran.user_id', 'left')
+            ->where('pembayaran.status_bayar', 'pending')
+            ->where('pendaftaran.status_pendaftaran', 'pending')
+            ->orderBy('pembayaran.created_at', 'DESC')
+            ->limit($limit)
+            ->find();
+    }
+
+    /**
+     * Count pending pembayaran verification
+     */
+    public function countPendingPaymentVerification()
+    {
+        return $this->select('COUNT(DISTINCT pendaftaran.id) as count', false)
+            ->join('pembayaran', 'pembayaran.pendaftaran_id = pendaftaran.id', 'left')
+            ->where('pembayaran.status_bayar', 'pending')
+            ->where('pendaftaran.status_pendaftaran', 'pending')
+            ->get()
+            ->getRow()
+            ->count ?? 0;
+    }
+
+    /**
+     * Get pembayaran terverifikasi yang menunggu verifikasi dokumen
+     */
+    public function getPendingDocumentVerification($limit = 5)
+    {
+        return $this->select('pendaftaran.*, users.email')
+            ->join('users', 'users.id = pendaftaran.user_id', 'left')
+            ->where('pendaftaran.status_pendaftaran', 'pembayaran_verified')
+            ->orderBy('pendaftaran.updated_at', 'ASC')
+            ->limit($limit)
+            ->find();
+    }
+
+    /**
+     * Count pending dokumen verification
+     */
+    public function countPendingDocumentVerification()
+    {
+        return $this->where('status_pendaftaran', 'pembayaran_verified')->countAllResults();
+    }
+
+    /**
+     * Get pending penerimaan (siap untuk pengumuman)
+     */
+    public function getPendingAcceptanceAnnounce($limit = 5)
+    {
+        return $this->select('pendaftaran.*, users.email')
+            ->join('users', 'users.id = pendaftaran.user_id', 'left')
+            ->where('pendaftaran.status_pendaftaran', 'diverifikasi')
+            ->orderBy('pendaftaran.created_at', 'ASC')
+            ->limit($limit)
+            ->find();
+    }
+
+    /**
+     * Count pending penerimaan
+     */
+    public function countPendingAcceptanceAnnounce()
+    {
+        return $this->where('status_pendaftaran', 'diverifikasi')->countAllResults();
+    }
+
+    /**
+     * Get dengan filter advanced
+     */
+    public function getFiltered($filters = [], $limit = 10, $offset = 0)
+    {
+        $builder = $this->select('pendaftaran.*, users.email, users.username, tahun_ajaran.nama_tahun')
+            ->join('users', 'users.id = pendaftaran.user_id', 'left')
+            ->join('tahun_ajaran', 'tahun_ajaran.id = pendaftaran.tahun_ajaran_id', 'left');
+
+        // Filter by status
+        if (!empty($filters['status_pendaftaran'])) {
+            $builder->where('pendaftaran.status_pendaftaran', $filters['status_pendaftaran']);
+        }
+
+        // Filter by tahun ajaran
+        if (!empty($filters['tahun_ajaran_id'])) {
+            $builder->where('pendaftaran.tahun_ajaran_id', $filters['tahun_ajaran_id']);
+        }
+
+        // Filter by jenis kelamin
+        if (!empty($filters['jenis_kelamin'])) {
+            $builder->where('pendaftaran.jenis_kelamin', $filters['jenis_kelamin']);
+        }
+
+        // Filter by agama
+        if (!empty($filters['agama'])) {
+            $builder->where('pendaftaran.agama', $filters['agama']);
+        }
+
+        // Search
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $builder->groupStart()
+                ->like('pendaftaran.nomor_pendaftaran', $search)
+                ->orLike('pendaftaran.nama_lengkap', $search)
+                ->orLike('users.email', $search)
+                ->orLike('users.username', $search)
+                ->groupEnd();
+        }
+
+        // Date range
+        if (!empty($filters['date_from'])) {
+            $builder->where('DATE(pendaftaran.created_at) >=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $builder->where('DATE(pendaftaran.created_at) <=', $filters['date_to']);
+        }
+
+        // Sort
+        $sortBy = $filters['sort_by'] ?? 'created_at';
+        $sortOrder = $filters['sort_order'] ?? 'DESC';
+        $builder->orderBy("pendaftaran.$sortBy", $sortOrder);
+
+        // Pagination
+        if ($limit) {
+            $builder->limit($limit, $offset);
+        }
+
+        return $builder;
+    }
+
+    /**
+     * Get sisa kuota tahun ajaran
+     */
+    public function getSisaKuota($tahunAjaranId)
+    {
+        $tahunAjaranModel = new TahunAjaranModel();
+        $tahunAjaran = $tahunAjaranModel->find($tahunAjaranId);
+
+        if (!$tahunAjaran) {
+            return 0;
+        }
+
+        $diterima = $this->where('tahun_ajaran_id', $tahunAjaranId)
+            ->where('status_pendaftaran', 'diterima')
+            ->countAllResults();
+
+        return max(0, $tahunAjaran->kuota - $diterima);
     }
 }

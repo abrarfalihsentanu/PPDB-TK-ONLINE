@@ -1,0 +1,1423 @@
+# ROADMAP SISTEM PPDB TK ONLINE - 60 HARI
+**Stack:** PHP (CodeIgniter 4) + MySQL + Materio Bootstrap  
+**Local Server:** Laragon  
+**Target:** Sistem PPDB dengan 2 Role (Admin & Orang Tua)
+
+---
+
+## FASE 1: PERSIAPAN & FONDASI (Hari 1-10)
+
+### Hari 1-2: Setup Environment & Tools
+- Install Laragon (sudah terinstall)
+- Install Composer via Laragon
+- Install Git untuk version control
+- Install VS Code + Extension (PHP Intelephense, PHP Namespace Resolver)
+- Setup Github repository untuk backup project
+
+### Hari 2-3: Instalasi CodeIgniter 4
+```bash
+# Via Composer
+composer create-project codeigniter4/appstarter ppdb-tk
+```
+- Konfigurasi file `.env`:
+  - `CI_ENVIRONMENT = development`
+  - `app.baseURL = 'http://ppdb-tk.test/'`
+  - Database: `database.default.hostname`, `username`, `password`, `database`
+- Setup virtual host di Laragon untuk `ppdb-tk.test`
+- Test akses `http://ppdb-tk.test` pastikan welcome page muncul
+
+### Hari 3-5: Setup Template Dashboard
+- Download template Materio Bootstrap (Free version)
+- Ekstrak dan pindahkan assets (css, js, images) ke folder `public/`
+- Buat layout base di `app/Views/layouts/`:
+  - `main.php` (untuk halaman umum)
+  - `admin.php` (untuk dashboard admin)
+  - `user.php` (untuk dashboard orang tua)
+- Setup section untuk konten dinamis menggunakan `<?= $this->renderSection('content') ?>`
+
+### Hari 5-8: Desain & Implementasi Database
+**Tabel yang dibuat:**
+
+1. **users** (autentikasi & role)
+   - id (PK), username, email, password, role (enum: admin/orang_tua), status (active/inactive), created_at, updated_at
+
+2. **tahun_ajaran**
+   - id (PK), nama_tahun (2024/2025), status (aktif/nonaktif), kuota, biaya_pendaftaran, created_at, updated_at
+
+3. **pendaftaran**
+   - id (PK), user_id (FK), tahun_ajaran_id (FK), nomor_pendaftaran (auto), nama_lengkap, nik, tempat_lahir, tanggal_lahir, jenis_kelamin, agama, alamat, status_pendaftaran (pending/diverifikasi/diterima/ditolak), created_at, updated_at
+
+4. **orang_tua**
+   - id (PK), pendaftaran_id (FK), nama_ayah, pekerjaan_ayah, telepon_ayah, nama_ibu, pekerjaan_ibu, telepon_ibu, nama_wali, pekerjaan_wali, telepon_wali
+
+5. **dokumen**
+   - id (PK), pendaftaran_id (FK), jenis_dokumen (kk/akta/foto), nama_file, path_file, status_verifikasi (pending/approved/rejected), keterangan, uploaded_at
+
+6. **pembayaran**
+   - id (PK), pendaftaran_id (FK), jumlah, bukti_bayar, status_bayar (pending/verified/rejected), tanggal_bayar, verified_by (FK users), verified_at, keterangan
+
+**Relasi:**
+- users 1:N pendaftaran
+- tahun_ajaran 1:N pendaftaran
+- pendaftaran 1:1 orang_tua
+- pendaftaran 1:N dokumen
+- pendaftaran 1:N pembayaran
+
+### Hari 8-10: Migration & Seeder
+```bash
+# Buat migration untuk setiap tabel
+php spark make:migration create_users_table
+php spark make:migration create_tahun_ajaran_table
+# ... dst untuk semua tabel
+
+# Jalankan migration
+php spark migrate
+
+# Buat seeder
+php spark make:seeder UserSeeder
+php spark make:seeder TahunAjaranSeeder
+
+# Jalankan seeder
+php spark db:seed UserSeeder
+```
+
+**Data Seeder:**
+- Admin default: admin@ppdb.test / password: admin123
+- Tahun ajaran aktif: 2025/2026, kuota: 60, biaya: 500000
+
+---
+
+## FASE 2: SISTEM AUTENTIKASI (Hari 11-18)
+
+### Hari 11-12: Model User & Auth Library
+- Buat `app/Models/UserModel.php`
+- Setup validation rules untuk user
+- Buat helper untuk hash password (gunakan `password_hash()`)
+- Setup session library di `app/Config/App.php`
+
+### Hari 12-14: Login & Logout
+**Controller:** `app/Controllers/Auth.php`
+- Method `login()`: tampilkan form login
+- Method `attemptLogin()`: validasi credentials, create session
+- Method `logout()`: destroy session, redirect ke login
+
+**View:** `app/Views/auth/login.php`
+- Form dengan input email & password
+- Validasi client-side (HTML5 + Bootstrap)
+- Tampilkan error message jika login gagal
+
+**Session data yang disimpan:**
+```php
+[
+    'user_id' => $user->id,
+    'username' => $user->username,
+    'email' => $user->email,
+    'role' => $user->role,
+    'logged_in' => true
+]
+```
+
+### Hari 14-16: Register Orang Tua
+**Controller:** `Auth::register()`, `Auth::attemptRegister()`
+
+**View:** `app/Views/auth/register.php`
+- Form: username, email, password, confirm_password
+- Validasi:
+  - Email unique
+  - Password minimal 8 karakter
+  - Password match
+- Auto set role = 'orang_tua'
+- Auto set status = 'active'
+
+### Hari 16-17: Lupa Password
+**Controller:** `Auth::forgotPassword()`, `Auth::resetPassword()`
+- Tampilkan form input email
+- Generate token reset (simpan di tabel users atau buat tabel password_resets)
+- **Simulasi:** Tampilkan link reset di halaman (karena belum setup SMTP)
+- Form reset password dengan validasi token
+- Update password baru
+
+### Hari 17-18: Middleware & Guards (Filter)
+**Buat Filter:** `app/Filters/AuthFilter.php`
+```php
+// Cek apakah user sudah login
+if (!session()->get('logged_in')) {
+    return redirect()->to('/auth/login');
+}
+```
+
+**Buat Filter:** `app/Filters/RoleFilter.php`
+```php
+// Cek role user (admin atau orang_tua)
+public function before($request, $arguments = null)
+{
+    $role = session()->get('role');
+    if (!in_array($role, $arguments)) {
+        throw new \CodeIgniter\Exceptions\PageNotFoundException();
+    }
+}
+```
+
+**Setup di** `app/Config/Filters.php`:
+```php
+public $filters = [
+    'auth' => ['before' => ['admin/*', 'user/*']],
+    'role' => ['before' => ['admin/*' => ['role:admin']]]
+];
+```
+
+---
+
+## FASE 3: DASHBOARD & MASTER DATA (Hari 19-28)
+
+### Hari 19-21: Dashboard Admin
+**Controller:** `app/Controllers/Admin/Dashboard.php`
+
+**Statistik yang ditampilkan:**
+- Total pendaftar (semua)
+- Total pendaftar tahun ajaran aktif
+- Pendaftar dengan status: pending, diverifikasi, diterima, ditolak
+- Grafik pendaftaran per bulan (opsional - gunakan Chart.js)
+
+**Query:**
+```php
+// Total pendaftar
+$this->pendaftaranModel->countAll();
+
+// Pendaftar by status
+$this->pendaftaranModel->where('status_pendaftaran', 'pending')->countAllResults();
+
+// Pendaftar tahun ajaran aktif
+$this->pendaftaranModel
+    ->join('tahun_ajaran', 'tahun_ajaran.id = pendaftaran.tahun_ajaran_id')
+    ->where('tahun_ajaran.status', 'aktif')
+    ->countAllResults();
+```
+
+**View:** Gunakan card/widget dari template Materio
+
+### Hari 21-22: Dashboard Orang Tua
+**Controller:** `app/Controllers/User/Dashboard.php`
+
+**Tampilan:**
+- Status pendaftaran terakhir
+- Timeline proses:
+  - ✅ Akun dibuat
+  - ⏳ Formulir diisi (jika sudah)
+  - ⏳ Pembayaran (jika sudah upload)
+  - ⏳ Verifikasi admin
+  - ⏳ Pengumuman
+- Tombol "Daftar Sekarang" jika belum punya pendaftaran
+- Tombol "Edit Pendaftaran" jika status masih pending
+
+### Hari 22-24: CRUD Tahun Ajaran
+**Model:** `app/Models/TahunAjaranModel.php`
+
+**Controller:** `app/Controllers/Admin/TahunAjaran.php`
+- `index()`: List semua tahun ajaran
+- `create()`: Form tambah tahun ajaran
+- `store()`: Simpan data baru
+- `edit($id)`: Form edit
+- `update($id)`: Update data
+- `delete($id)`: Hapus data (soft delete recommended)
+- `activate($id)`: Set status aktif (otomatis nonaktifkan yang lain)
+
+**Validasi:**
+- Nama tahun format: YYYY/YYYY (contoh: 2025/2026)
+- Hanya 1 tahun ajaran yang bisa aktif
+- Kuota minimal 1
+- Biaya pendaftaran >= 0
+
+### Hari 24-26: Setting Kuota & Biaya
+**Integrated di CRUD Tahun Ajaran**
+- Field kuota: input number
+- Field biaya_pendaftaran: input number (format Rupiah di view)
+- Quick edit untuk kuota dan biaya tanpa form full
+
+**Helper untuk format Rupiah:**
+```php
+function formatRupiah($angka) {
+    return 'Rp ' . number_format($angka, 0, ',', '.');
+}
+```
+
+### Hari 26-28: Manajemen User (Admin)
+**Controller:** `app/Controllers/Admin/Users.php`
+
+**Fitur:**
+- List semua user dengan role 'orang_tua'
+- Filter by status (active/inactive)
+- Search by username/email
+- Aktifkan/Nonaktifkan user
+- Reset password user (generate password random, tampilkan ke admin)
+- View detail user + history pendaftaran
+
+**View:**
+- Tabel dengan DataTables (sorting, searching, pagination)
+- Modal untuk konfirmasi aksi
+
+---
+
+## FASE 4: MODUL PENDAFTARAN - CORE (Hari 29-42)
+
+### Hari 29-30: Model Pendaftaran & Relasi
+**Models:**
+- `app/Models/PendaftaranModel.php`
+- `app/Models/OrangTuaModel.php`
+- `app/Models/DokumenModel.php`
+
+**Setup Relasi di Model:**
+```php
+// PendaftaranModel
+protected $allowedFields = ['user_id', 'tahun_ajaran_id', 'nomor_pendaftaran', ...];
+
+public function getWithRelations($id) {
+    return $this->select('pendaftaran.*, users.email, tahun_ajaran.nama_tahun')
+                ->join('users', 'users.id = pendaftaran.user_id')
+                ->join('tahun_ajaran', 'tahun_ajaran.id = pendaftaran.tahun_ajaran_id')
+                ->find($id);
+}
+```
+
+**Auto Generate Nomor Pendaftaran:**
+```php
+// Format: PPDB/TAHUN/URUTAN
+// Contoh: PPDB/2025/001
+$lastNumber = $this->getLastNumber($tahunAjaranId);
+$newNumber = 'PPDB/' . date('Y') . '/' . str_pad($lastNumber + 1, 3, '0', STR_PAD_LEFT);
+```
+
+### Hari 30-33: Form Data Siswa
+**Controller:** `app/Controllers/User/Pendaftaran.php`
+
+**Method `create()`:**
+- Cek apakah user sudah punya pendaftaran aktif
+- Tampilkan form data siswa
+
+**Form Fields:**
+- Nama Lengkap (required)
+- NIK (16 digit, unique)
+- Tempat Lahir (required)
+- Tanggal Lahir (required, datepicker)
+- Jenis Kelamin (radio: L/P)
+- Agama (dropdown: Islam, Kristen, Katolik, Hindu, Buddha, Konghucu)
+- Alamat Lengkap (textarea)
+- RT/RW
+- Kelurahan/Desa
+- Kecamatan
+- Kota/Kabupaten
+- Provinsi
+- Kode Pos
+
+**Validasi:**
+- NIK 16 digit numerik
+- Tanggal lahir: minimal 3 tahun, maksimal 7 tahun
+- Semua field required kecuali RT/RW dan kode pos
+
+### Hari 33-35: Form Data Orang Tua/Wali
+**Lanjutan dari form sebelumnya (Step 2) atau halaman terpisah**
+
+**Data Ayah:**
+- Nama Ayah (required)
+- NIK Ayah (16 digit)
+- Pekerjaan Ayah (required)
+- Penghasilan Ayah (dropdown range)
+- No. Telepon Ayah (required, format: 08xxx)
+
+**Data Ibu:**
+- Nama Ibu (required)
+- NIK Ibu (16 digit)
+- Pekerjaan Ibu (required)
+- Penghasilan Ibu (dropdown range)
+- No. Telepon Ibu (required)
+
+**Data Wali (opsional):**
+- Nama Wali
+- NIK Wali
+- Pekerjaan Wali
+- Hubungan dengan Siswa
+- No. Telepon Wali
+
+**Validasi:**
+- NIK ayah dan ibu harus berbeda
+- Minimal salah satu nomor telepon harus ada
+
+### Hari 35-38: Upload Dokumen
+**Step 3 dari formulir pendaftaran**
+
+**Upload Requirements:**
+- Kartu Keluarga (KK): PDF/JPG/PNG, max 2MB
+- Akta Kelahiran: PDF/JPG/PNG, max 2MB
+- Foto Siswa: JPG/PNG, max 1MB, ratio 3:4
+
+**Implementation:**
+```php
+// Controller
+$files = [
+    'kk' => $this->request->getFile('kk'),
+    'akta' => $this->request->getFile('akta'),
+    'foto' => $this->request->getFile('foto')
+];
+
+foreach ($files as $jenis => $file) {
+    if ($file->isValid()) {
+        $newName = $jenis . '_' . $pendaftaranId . '_' . time() . '.' . $file->getExtension();
+        $file->move('uploads/dokumen/', $newName);
+        
+        // Simpan ke tabel dokumen
+        $this->dokumenModel->insert([
+            'pendaftaran_id' => $pendaftaranId,
+            'jenis_dokumen' => $jenis,
+            'nama_file' => $file->getName(),
+            'path_file' => 'uploads/dokumen/' . $newName,
+            'status_verifikasi' => 'pending'
+        ]);
+    }
+}
+```
+
+**View:**
+- Preview image sebelum upload
+- Progress bar upload (optional)
+- Validasi file type dan size di client-side (JavaScript)
+
+### Hari 38-40: Preview & Submit Pendaftaran
+**Step 4: Review semua data**
+
+**Tampilan:**
+- Data Siswa (readonly)
+- Data Orang Tua (readonly)
+- Dokumen yang diupload (thumbnail + link download)
+- Informasi biaya pendaftaran
+- Checkbox: "Saya menyatakan data yang saya isi adalah benar"
+- Tombol "Kembali ke Edit" dan "Submit Pendaftaran"
+
+**Process Submit:**
+```php
+public function submit($id) {
+    // Validasi semua data sudah lengkap
+    $pendaftaran = $this->pendaftaranModel->find($id);
+    $orangTua = $this->orangTuaModel->where('pendaftaran_id', $id)->first();
+    $dokumen = $this->dokumenModel->where('pendaftaran_id', $id)->countAllResults();
+    
+    if (!$pendaftaran || !$orangTua || $dokumen < 3) {
+        return redirect()->back()->with('error', 'Data belum lengkap');
+    }
+    
+    // Update status pendaftaran
+    $this->pendaftaranModel->update($id, [
+        'status_pendaftaran' => 'pending'
+    ]);
+    
+    return redirect()->to('/user/dashboard')->with('success', 'Pendaftaran berhasil disubmit');
+}
+```
+
+### Hari 40-42: Edit Pendaftaran
+**Fitur edit hanya jika status masih 'pending'**
+
+**Controller:** `Pendaftaran::edit($id)`
+- Load data dari database
+- Populate form dengan data existing
+- Allow edit semua field kecuali nomor pendaftaran
+- Allow re-upload dokumen (file lama akan di-replace)
+
+**Proteksi:**
+```php
+$pendaftaran = $this->pendaftaranModel->find($id);
+
+if ($pendaftaran->user_id != session()->get('user_id')) {
+    throw new \CodeIgniter\Exceptions\PageNotFoundException();
+}
+
+if ($pendaftaran->status_pendaftaran != 'pending') {
+    return redirect()->back()->with('error', 'Pendaftaran tidak dapat diedit');
+}
+```
+
+---
+
+## FASE 5: PEMBAYARAN & VERIFIKASI (Hari 43-50)
+
+### Hari 43-45: Upload Bukti Bayar (Orang Tua)
+**Controller:** `app/Controllers/User/Pembayaran.php`
+
+**Method `index()`:**
+- Tampilkan informasi biaya pendaftaran
+- Informasi rekening tujuan transfer (simpan di settings/tahun_ajaran)
+- Form upload bukti bayar
+- History pembayaran (jika pernah upload)
+
+**Form Upload:**
+- File bukti transfer (JPG/PNG/PDF, max 2MB)
+- Nama pengirim (input text)
+- Tanggal transfer (date)
+- Keterangan (optional)
+
+**Process:**
+```php
+public function upload($pendaftaranId) {
+    $file = $this->request->getFile('bukti_bayar');
+    
+    if ($file->isValid()) {
+        $newName = 'bayar_' . $pendaftaranId . '_' . time() . '.' . $file->getExtension();
+        $file->move('uploads/pembayaran/', $newName);
+        
+        $this->pembayaranModel->insert([
+            'pendaftaran_id' => $pendaftaranId,
+            'jumlah' => $this->request->getPost('jumlah'),
+            'bukti_bayar' => 'uploads/pembayaran/' . $newName,
+            'status_bayar' => 'pending',
+            'tanggal_bayar' => $this->request->getPost('tanggal_bayar'),
+            'keterangan' => $this->request->getPost('keterangan')
+        ]);
+        
+        return redirect()->back()->with('success', 'Bukti pembayaran berhasil diupload');
+    }
+}
+```
+
+### Hari 45-47: Verifikasi Pembayaran (Admin)
+**Controller:** `app/Controllers/Admin/Pembayaran.php`
+
+**Method `index()`:**
+- List semua pembayaran dengan status 'pending'
+- Filter by status (pending/verified/rejected)
+- Filter by tahun ajaran
+- Search by nomor pendaftaran / nama siswa
+
+**Method `verify($id)`:**
+- Tampilkan detail pembayaran
+- Preview bukti bayar
+- Form verifikasi:
+  - Status: Approve / Reject (radio)
+  - Keterangan (textarea)
+  
+**Process Verify:**
+```php
+public function processVerify($id) {
+    $status = $this->request->getPost('status'); // 'verified' atau 'rejected'
+    
+    $this->pembayaranModel->update($id, [
+        'status_bayar' => $status,
+        'verified_by' => session()->get('user_id'),
+        'verified_at' => date('Y-m-d H:i:s'),
+        'keterangan' => $this->request->getPost('keterangan')
+    ]);
+    
+    // Jika approved, update status pendaftaran
+    if ($status == 'verified') {
+        $pembayaran = $this->pembayaranModel->find($id);
+        $this->pendaftaranModel->update($pembayaran->pendaftaran_id, [
+            'status_pendaftaran' => 'pembayaran_verified'
+        ]);
+    }
+    
+    return redirect()->back()->with('success', 'Pembayaran berhasil diverifikasi');
+}
+```
+
+### Hari 47-49: Verifikasi Berkas (Admin)
+**Controller:** `app/Controllers/Admin/Verifikasi.php`
+
+**Method `index()`:**
+- List pendaftaran dengan status 'pembayaran_verified'
+- Tampilkan nama siswa, nomor pendaftaran, tanggal daftar
+- Tombol "Verifikasi Berkas"
+
+**Method `verifyDokumen($pendaftaranId)`:**
+- Tampilkan semua data pendaftaran:
+  - Data siswa
+  - Data orang tua
+  - Dokumen (dengan preview)
+- Form verifikasi untuk setiap dokumen:
+  - Status: Approved / Rejected
+  - Keterangan (jika ditolak)
+
+**Process:**
+```php
+public function processDokumen($pendaftaranId) {
+    $dokumenList = $this->request->getPost('dokumen'); // array
+    
+    foreach ($dokumenList as $dokumenId => $data) {
+        $this->dokumenModel->update($dokumenId, [
+            'status_verifikasi' => $data['status'],
+            'keterangan' => $data['keterangan']
+        ]);
+    }
+    
+    // Cek apakah semua dokumen approved
+    $allApproved = $this->dokumenModel
+        ->where('pendaftaran_id', $pendaftaranId)
+        ->where('status_verifikasi', 'approved')
+        ->countAllResults();
+    
+    if ($allApproved == 3) {
+        $this->pendaftaranModel->update($pendaftaranId, [
+            'status_pendaftaran' => 'diverifikasi'
+        ]);
+    } else {
+        // Jika ada yang ditolak
+        $this->pendaftaranModel->update($pendaftaranId, [
+            'status_pendaftaran' => 'dokumen_ditolak'
+        ]);
+    }
+    
+    return redirect()->to('/admin/verifikasi')->with('success', 'Verifikasi berkas berhasil');
+}
+```
+
+### Hari 49-50: Update Status Penerimaan
+**Controller:** `app/Controllers/Admin/Penerimaan.php`
+
+**Method `index()`:**
+- List pendaftaran dengan status 'diverifikasi'
+- Tampilkan scoring/ranking (opsional: berdasarkan tanggal daftar, nilai, dll)
+- Cek kuota tersisa
+
+**Method `updateStatus($pendaftaranId)`:**
+- Form dengan pilihan:
+  - Diterima
+  - Ditolak
+  - Cadangan (opsional)
+- Keterangan (untuk yang ditolak)
+
+**Batch Update (optional):**
+- Checkbox untuk select multiple pendaftaran
+- Tombol "Terima Semua yang Dipilih"
+- Validasi tidak melebihi kuota
+
+**Process:**
+```php
+public function processStatus() {
+    $pendaftaranIds = $this->request->getPost('pendaftaran_ids');
+    $status = $this->request->getPost('status'); // 'diterima' atau 'ditolak'
+    
+    // Validasi kuota jika status diterima
+    if ($status == 'diterima') {
+        $tahunAjaran = $this->tahunAjaranModel->where('status', 'aktif')->first();
+        $sudahDiterima = $this->pendaftaranModel
+            ->where('tahun_ajaran_id', $tahunAjaran->id)
+            ->where('status_pendaftaran', 'diterima')
+            ->countAllResults();
+        
+        if ($sudahDiterima + count($pendaftaranIds) > $tahunAjaran->kuota) {
+            return redirect()->back()->with('error', 'Kuota tidak mencukupi');
+        }
+    }
+    
+    foreach ($pendaftaranIds as $id) {
+        $this->pendaftaranModel->update($id, [
+            'status_pendaftaran' => $status,
+            'keterangan' => $this->request->getPost('keterangan')
+        ]);
+    }
+    
+    return redirect()->back()->with('success', 'Status penerimaan berhasil diupdate');
+}
+```
+
+---
+
+## FASE 6: LAPORAN & FINALISASI (Hari 51-60)
+
+### Hari 51-53: Cetak Bukti Pendaftaran PDF
+**Install Library:**
+```bash
+composer require dompdf/dompdf
+```
+
+**Controller:** `app/Controllers/User/Cetak.php`
+
+**Method `buktiPendaftaran($id)`:**
+```php
+use Dompdf\Dompdf;
+
+public function buktiPendaftaran($id) {
+    $pendaftaran = $this->pendaftaranModel->getWithRelations($id);
+    $orangTua = $this->orangTuaModel->where('pendaftaran_id', $id)->first();
+    
+    // Load view
+    $html = view('user/cetak/bukti_pendaftaran', [
+        'pendaftaran' => $pendaftaran,
+        'orangTua' => $orangTua
+    ]);
+    
+    // Generate PDF
+    $dompdf = new Dompdf();
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+    
+    // Output
+    $dompdf->stream('Bukti_Pendaftaran_' . $pendaftaran->nomor_pendaftaran . '.pdf', [
+        'Attachment' => false // false = tampil di browser, true = download
+    ]);
+}
+```
+
+**Template PDF:**
+- Header: Logo sekolah, nama sekolah, alamat
+- Nomor pendaftaran (besar, bold)
+- Data siswa lengkap
+- Data orang tua
+- QR Code nomor pendaftaran (optional)
+- Footer: tanggal cetak, tanda tangan
+
+### Hari 53-55: Laporan Rekap Admin
+**Install PHPSpreadsheet (untuk Excel):**
+```bash
+composer require phpoffice/phpspreadsheet
+```
+
+**Controller:** `app/Controllers/Admin/Laporan.php`
+
+**Method `index()`:**
+- Form filter:
+  - Tahun ajaran (dropdown)
+  - Status pendaftaran (all/pending/diterima/ditolak)
+  - Rentang tanggal pendaftaran
+  - Jenis kelamin
+- Tombol "Tampilkan", "Export PDF", "Export Excel"
+
+**Method `exportPdf()`:**
+```php
+public function exportPdf() {
+    $filter = $this->request->getGet();
+    $data = $this->pendaftaranModel->getFiltered($filter);
+    
+    $html = view('admin/laporan/rekap_pdf', ['data' => $data, 'filter' => $filter]);
+    
+    $dompdf = new Dompdf();
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'landscape');
+    $dompdf->render();
+    $dompdf->stream('Laporan_PPDB_' . date('Ymd') . '.pdf');
+}
+```
+
+**Method `exportExcel()`:**
+```php
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+public function exportExcel() {
+    $filter = $this->request->getGet();
+    $data = $this->pendaftaranModel->getFiltered($filter);
+    
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    
+    // Header
+    $sheet->setCellValue('A1', 'No');
+    $sheet->setCellValue('B1', 'Nomor Pendaftaran');
+    $sheet->setCellValue('C1', 'Nama Lengkap');
+    $sheet->setCellValue('D1', 'Jenis Kelamin');
+    $sheet->setCellValue('E1', 'Tanggal Lahir');
+    $sheet->setCellValue('F1', 'Nama Orang Tua');
+    $sheet->setCellValue('G1', 'Status');
+    
+    // Data
+    $row = 2;
+    foreach ($data as $index => $item) {
+        $sheet->setCellValue('A' . $row, $index + 1);
+        $sheet->setCellValue('B' . $row, $item->nomor_pendaftaran);
+        $sheet->setCellValue('C' . $row, $item->nama_lengkap);
+        // ... dst
+        $row++;
+    }
+    
+    // Download
+    $writer = new Xlsx($spreadsheet);
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="Laporan_PPDB_' . date('Ymd') . '.xlsx"');
+    $writer->save('php://output');
+}
+```
+
+**Laporan lain yang bisa dibuat:**
+- Laporan statistik per bulan
+- Laporan berdasarkan asal sekolah
+- Laporan pembayaran
+
+### Hari 55-56: Notifikasi & Email (Opsional)
+**Setup SMTP di .env:**
+```
+email.fromEmail = noreply@ppdb.test
+email.fromName = PPDB TK
+email.SMTPHost = smtp.gmail.com
+email.SMTPUser = your-email@gmail.com
+email.SMTPPass = your-app-password
+email.SMTPPort = 587
+email.SMTPCrypto = tls
+```
+
+**Trigger Email:**
+1. Setelah registrasi akun (email verifikasi - opsional)
+2. Setelah submit pendaftaran (konfirmasi pendaftaran)
+3. Setelah pembayaran diverifikasi
+4. Setelah berkas diverifikasi
+5. Pengumuman kelulusan (diterima/ditolak)
+
+**Helper Email:**
+```php
+// app/Helpers/email_helper.php
+function sendEmail($to, $subject, $message) {
+    $email = \Config\Services::email();
+    
+    $email->setTo($to);
+    $email->setSubject($subject);
+    $email->setMessage($message);
+    
+    if ($email->send()) {
+        return true;
+    } else {
+        log_message('error', $email->printDebugger(['headers']));
+        return false;
+    }
+}
+```
+
+**Template Email:**
+```php
+// app/Views/emails/pendaftaran_submitted.php
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .header { background: #4CAF50; color: white; padding: 20px; }
+        .content { padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Pendaftaran PPDB TK Berhasil</h2>
+    </div>
+    <div class="content">
+        <p>Yth. Bapak/Ibu <?= $nama_orangtua ?>,</p>
+        <p>Pendaftaran atas nama <strong><?= $nama_siswa ?></strong> telah berhasil disubmit.</p>
+        <p>Nomor Pendaftaran: <strong><?= $nomor_pendaftaran ?></strong></p>
+        <p>Silakan lakukan pembayaran dan upload bukti transfer.</p>
+        <p>Terima kasih.</p>
+    </div>
+</body>
+</html>
+```
+
+**Implementasi:**
+```php
+// Di controller setelah submit pendaftaran
+$emailBody = view('emails/pendaftaran_submitted', [
+    'nama_orangtua' => $orangTua->nama_ayah,
+    'nama_siswa' => $pendaftaran->nama_lengkap,
+    'nomor_pendaftaran' => $pendaftaran->nomor_pendaftaran
+]);
+
+sendEmail(
+    session()->get('email'),
+    'Pendaftaran PPDB Berhasil - ' . $pendaftaran->nomor_pendaftaran,
+    $emailBody
+);
+```
+
+### Hari 56-58: Testing & Bug Fixing
+
+#### Testing Checklist:
+
+**1. Testing Autentikasi:**
+- [ ] Register dengan email yang sudah terdaftar (harus error)
+- [ ] Login dengan kredensial salah (harus error)
+- [ ] Login berhasil (redirect ke dashboard sesuai role)
+- [ ] Logout berhasil (session clear)
+- [ ] Lupa password flow lengkap
+- [ ] Akses halaman admin tanpa login (harus redirect)
+- [ ] Akses halaman admin dengan role orang_tua (harus 404)
+
+**2. Testing Pendaftaran (Orang Tua):**
+- [ ] Cek user tidak bisa daftar 2x di tahun ajaran yang sama
+- [ ] Form validation bekerja (NIK 16 digit, email valid, dll)
+- [ ] Upload dokumen dengan file size > limit (harus error)
+- [ ] Upload dokumen dengan extension tidak sesuai (harus error)
+- [ ] Submit pendaftaran dengan data tidak lengkap (harus error)
+- [ ] Edit pendaftaran setelah status diverifikasi (harus tidak bisa)
+- [ ] Upload bukti bayar berhasil
+- [ ] Cetak bukti pendaftaran PDF
+
+**3. Testing Admin:**
+- [ ] Dashboard statistik akurat
+- [ ] CRUD tahun ajaran (create, read, update, delete, activate)
+- [ ] Aktivasi tahun ajaran (yang lain otomatis nonaktif)
+- [ ] Verifikasi pembayaran (approve & reject)
+- [ ] Verifikasi dokumen (approve & reject)
+- [ ] Update status penerimaan (diterima/ditolak)
+- [ ] Validasi kuota tidak terlampaui
+- [ ] Export laporan PDF & Excel
+
+**4. Testing Database:**
+- [ ] Foreign key constraint bekerja
+- [ ] Soft delete (jika diimplementasi)
+- [ ] Trigger auto increment nomor pendaftaran
+- [ ] Query optimization (index pada kolom yang sering di-search)
+
+**5. Testing Security:**
+- [ ] SQL Injection (gunakan prepared statement)
+- [ ] XSS (escape output)
+- [ ] CSRF protection (CodeIgniter default)
+- [ ] File upload validation (type, size, extension)
+- [ ] Session hijacking prevention
+- [ ] Password hashing (tidak plain text di database)
+
+**6. Testing UI/UX:**
+- [ ] Responsive di mobile, tablet, desktop
+- [ ] Form validation error message jelas
+- [ ] Success/error notification muncul
+- [ ] Loading indicator saat proses
+- [ ] Breadcrumb navigasi
+- [ ] Back button tidak merusak state
+
+**Bug Fixing Workflow:**
+```bash
+# 1. Reproduksi bug
+# 2. Catat di issue tracker atau notes
+# 3. Fix di development
+# 4. Test ulang
+# 5. Commit dengan message jelas
+
+git commit -m "Fix: Validasi NIK tidak accept angka non-numerik"
+```
+
+**Tools untuk Testing:**
+- Browser DevTools (Console, Network, Application)
+- Postman (untuk test API jika ada)
+- XAMPP/Laragon error logs
+- CodeIgniter debug toolbar (sudah built-in di CI4)
+
+### Hari 58-60: Dokumentasi & Deployment
+
+#### Hari 58: Dokumentasi Teknis
+
+**1. README.md (Root project):**
+```markdown
+# Sistem PPDB TK Online
+
+## Tech Stack
+- PHP 8.0+
+- CodeIgniter 4
+- MySQL 5.7+
+- Bootstrap 5 (Materio Template)
+
+## Installation
+
+### Requirements
+- Laragon / XAMPP
+- Composer
+- PHP 8.0 or higher
+- MySQL
+
+### Setup
+
+1. Clone repository
+```bash
+git clone https://github.com/username/ppdb-tk.git
+cd ppdb-tk
+```
+
+2. Install dependencies
+```bash
+composer install
+```
+
+3. Setup database
+- Buat database baru: `ppdb_tk`
+- Import SQL: `database/ppdb_tk.sql` (atau jalankan migration)
+
+4. Setup environment
+```bash
+cp env .env
+```
+
+Edit `.env`:
+```
+CI_ENVIRONMENT = development
+app.baseURL = 'http://ppdb-tk.test/'
+
+database.default.hostname = localhost
+database.default.database = ppdb_tk
+database.default.username = root
+database.default.password = 
+```
+
+5. Jalankan migration
+```bash
+php spark migrate
+php spark db:seed UserSeeder
+```
+
+6. Setup virtual host di Laragon
+- Domain: `ppdb-tk.test`
+- Document root: `/path/to/ppdb-tk/public`
+
+7. Akses aplikasi
+- URL: http://ppdb-tk.test
+- Admin: admin@ppdb.test / admin123
+- User demo: user@ppdb.test / user123
+
+## Folder Structure
+```
+ppdb-tk/
+├── app/
+│   ├── Controllers/
+│   │   ├── Admin/
+│   │   └── User/
+│   ├── Models/
+│   ├── Views/
+│   │   ├── admin/
+│   │   ├── user/
+│   │   └── auth/
+│   └── Filters/
+├── public/
+│   ├── uploads/
+│   │   ├── dokumen/
+│   │   └── pembayaran/
+│   └── assets/
+├── writable/
+└── database/
+    └── migrations/
+```
+
+## Features
+- Multi-role authentication (Admin, Orang Tua)
+- Online registration form
+- Document upload (KK, Akta, Foto)
+- Payment verification
+- Document verification
+- Acceptance announcement
+- PDF report generation
+- Excel export
+
+## Credits
+- Template: Materio Bootstrap
+- Framework: CodeIgniter 4
+```
+
+**2. User Manual (PDF):**
+
+Buat dokumen user manual untuk orang tua:
+- Cara registrasi akun
+- Cara mengisi formulir pendaftaran
+- Cara upload dokumen
+- Cara upload bukti bayar
+- Cara cek status pendaftaran
+- Cara cetak bukti pendaftaran
+- FAQ (Frequently Asked Questions)
+
+**3. Admin Manual (PDF):**
+
+Buat dokumen admin manual:
+- Cara login admin
+- Cara kelola tahun ajaran
+- Cara verifikasi pembayaran
+- Cara verifikasi dokumen
+- Cara update status penerimaan
+- Cara export laporan
+- Troubleshooting
+
+**4. Technical Documentation:**
+
+```markdown
+# Technical Documentation
+
+## Database Schema
+
+### Table: users
+| Field | Type | Key | Description |
+|-------|------|-----|-------------|
+| id | INT | PK | Auto increment |
+| username | VARCHAR(50) | UQ | Unique username |
+| email | VARCHAR(100) | UQ | Email address |
+| password | VARCHAR(255) | | Hashed password |
+| role | ENUM | | admin/orang_tua |
+| status | ENUM | | active/inactive |
+
+### Table: pendaftaran
+...
+
+## API Endpoints (jika ada)
+
+### Authentication
+- POST /api/auth/login
+- POST /api/auth/register
+- POST /api/auth/logout
+
+### Pendaftaran
+- GET /api/pendaftaran
+- POST /api/pendaftaran
+- PUT /api/pendaftaran/{id}
+- DELETE /api/pendaftaran/{id}
+
+## Security Measures
+- Password hashing dengan bcrypt
+- CSRF protection
+- XSS prevention
+- SQL injection prevention
+- File upload validation
+- Session management
+
+## Performance Optimization
+- Database indexing pada kolom pencarian
+- Query caching
+- Asset minification
+- Image optimization
+- Lazy loading
+```
+
+#### Hari 59: Persiapan Deployment
+
+**1. Checklist Pre-Deployment:**
+- [ ] Semua fitur sudah tested
+- [ ] Bug critical sudah fixed
+- [ ] Database sudah optimized (index, foreign key)
+- [ ] File `.env` production ready
+- [ ] Debug mode OFF di production
+- [ ] Error logging setup
+- [ ] Backup database
+- [ ] Documentation lengkap
+
+**2. Setup Production Environment:**
+
+**File `.env` Production:**
+```
+CI_ENVIRONMENT = production
+
+app.baseURL = 'https://ppdb-tk-yourschool.com/'
+
+database.default.hostname = localhost
+database.default.database = ppdb_tk_prod
+database.default.username = dbuser_prod
+database.default.password = strong_password_here
+
+# Security
+security.csrfProtection = 'session'
+security.tokenRandomize = true
+
+# Email Production
+email.SMTPHost = smtp.gmail.com
+email.SMTPUser = noreply@ppdb-tk-yourschool.com
+email.SMTPPass = production_app_password
+```
+
+**3. File `.htaccess` (di folder public):**
+```apache
+# Disable directory browsing
+Options -Indexes
+
+# Rewrite engine
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # Redirect trailing slashes
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)/$ /$1 [L,R=301]
+    
+    # Rewrite to index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# Protect sensitive files
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "(^#.*#|\.(bak|conf|dist|fla|in[ci]|log|psd|sh|sql|sw[op])|~)$">
+    Require all denied
+</FilesMatch>
+```
+
+**4. Database Backup Script:**
+```bash
+#!/bin/bash
+# backup_db.sh
+
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/path/to/backups"
+DB_NAME="ppdb_tk_prod"
+DB_USER="dbuser_prod"
+DB_PASS="strong_password_here"
+
+mysqldump -u $DB_USER -p$DB_PASS $DB_NAME > $BACKUP_DIR/backup_$DATE.sql
+
+# Hapus backup lebih dari 7 hari
+find $BACKUP_DIR -name "backup_*.sql" -mtime +7 -delete
+```
+
+**Setup Cron Job untuk auto backup:**
+```bash
+# Jalankan setiap hari jam 2 pagi
+0 2 * * * /path/to/backup_db.sh
+```
+
+#### Hari 60: Deployment & Go Live
+
+**1. Deployment ke Shared Hosting (cPanel):**
+
+**Step by step:**
+```
+1. Login ke cPanel
+2. Buat database MySQL baru via phpMyAdmin
+3. Import database (file .sql hasil migration atau backup)
+4. Upload files via FileZilla/FTP:
+   - Upload semua file KECUALI folder vendor dan .git
+5. SSH ke server (jika ada akses):
+   composer install --no-dev --optimize-autoloader
+6. Set permission folder writable:
+   chmod 755 writable/
+   chmod 755 writable/cache/
+   chmod 755 writable/logs/
+   chmod 755 writable/session/
+   chmod 755 public/uploads/
+7. Setup domain/subdomain:
+   - Document Root: public_html/ppdb-tk/public
+8. Edit .env dengan kredensial production
+9. Test akses: https://yourdomain.com
+```
+
+**2. Deployment ke VPS (Ubuntu):**
+
+**Install LEMP Stack:**
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Nginx
+sudo apt install nginx -y
+
+# Install PHP 8.0
+sudo apt install php8.0-fpm php8.0-mysql php8.0-mbstring php8.0-xml php8.0-curl php8.0-zip php8.0-gd -y
+
+# Install MySQL
+sudo apt install mysql-server -y
+sudo mysql_secure_installation
+
+# Install Composer
+curl -sS https://getcomposer.org/installer | php
+sudo mv composer.phar /usr/local/bin/composer
+```
+
+**Setup Nginx Virtual Host:**
+```nginx
+# /etc/nginx/sites-available/ppdb-tk
+
+server {
+    listen 80;
+    server_name ppdb-tk.yourdomain.com;
+    root /var/www/ppdb-tk/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php/php8.0-fpm.sock;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+```
+
+**Enable site:**
+```bash
+sudo ln -s /etc/nginx/sites-available/ppdb-tk /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+**Deploy aplikasi:**
+```bash
+# Clone repository
+cd /var/www
+sudo git clone https://github.com/username/ppdb-tk.git
+cd ppdb-tk
+
+# Install dependencies
+sudo composer install --no-dev --optimize-autoloader
+
+# Set permission
+sudo chown -R www-data:www-data /var/www/ppdb-tk
+sudo chmod -R 755 /var/www/ppdb-tk
+sudo chmod -R 775 writable/
+sudo chmod -R 775 public/uploads/
+
+# Setup database
+mysql -u root -p
+CREATE DATABASE ppdb_tk_prod;
+CREATE USER 'ppdb_user'@'localhost' IDENTIFIED BY 'strong_password';
+GRANT ALL PRIVILEGES ON ppdb_tk_prod.* TO 'ppdb_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+
+# Import database
+mysql -u ppdb_user -p ppdb_tk_prod < database/ppdb_tk.sql
+
+# Edit .env
+sudo nano .env
+# Sesuaikan konfigurasi production
+
+# Test
+curl http://ppdb-tk.yourdomain.com
+```
+
+**3. Setup SSL (Let's Encrypt):**
+```bash
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d ppdb-tk.yourdomain.com
+sudo certbot renew --dry-run
+```
+
+**4. Monitoring & Maintenance:**
+
+**Setup Error Monitoring:**
+- Install Sentry atau error tracking lainnya
+- Monitor log files: `writable/logs/`
+- Setup uptime monitoring (UptimeRobot, Pingdom)
+
+**Maintenance Checklist:**
+```
+Daily:
+- [ ] Cek error logs
+- [ ] Monitor disk space
+- [ ] Backup database
+
+Weekly:
+- [ ] Review system performance
+- [ ] Check security updates
+- [ ] Analyze user activity
+
+Monthly:
+- [ ] Full system backup
+- [ ] Security audit
+- [ ] Update dependencies (composer update)
+- [ ] Review and archive old data
+```
+
+**5. Post-Deployment Testing:**
+- [ ] Test semua fitur di production
+- [ ] Test di berbagai browser (Chrome, Firefox, Safari, Edge)
+- [ ] Test di berbagai device (Desktop, Tablet, Mobile)
+- [ ] Test performa (loading time)
+- [ ] Test security (SSL, HTTPS redirect)
+- [ ] Test email notification
+- [ ] Test upload file
+- [ ] Test download PDF
+
+**6. Go Live Announcement:**
+- [ ] Informasikan ke stakeholder
+- [ ] Sosialisasi ke orang tua calon siswa
+- [ ] Buat panduan singkat/video tutorial
+- [ ] Siapkan tim support untuk menjawab pertanyaan
+- [ ] Monitor traffic dan error di hari pertama
+
+---
+
+## BONUS: TIPS & BEST PRACTICES
+
+### Tips Development:
+1. **Gunakan Git branching:**
+   - `main` untuk production
+   - `development` untuk fitur baru
+   - `feature/nama-fitur` untuk setiap fitur
+
+2. **Commit message yang jelas:**
+   ```
+   feat: Tambah fitur upload dokumen
+   fix: Perbaiki validasi NIK
+   refactor: Optimalkan query dashboard
+   docs: Update README
+   ```
+
+3. **Code review sebelum merge:**
+   - Review kode sendiri dulu
+   - Pastikan tidak ada hardcoded value
+   - Hapus console.log() dan debugging code
+
+### Tips Security:
+1. **Jangan commit file .env ke Git**
+2. **Gunakan environment variables untuk credentials**
+3. **Update dependencies secara berkala**
+4. **Implementasi rate limiting untuk login**
+5. **Backup database secara rutin**
+
+### Tips Performance:
+1. **Gunakan database indexing:**
+   ```sql
+   CREATE INDEX idx_nomor_pendaftaran ON pendaftaran(nomor_pendaftaran);
+   CREATE INDEX idx_user_id ON pendaftaran(user_id);
+   ```
+
+2. **Cache query yang sering diakses:**
+   ```php
+   $cache = \Config\Services::cache();
+   $stats = $cache->remember('dashboard_stats', 3600, function() {
+       return $this->pendaftaranModel->getStatistics();
+   });
+   ```
+
+3. **Compress dan minify assets (CSS, JS)**
+4. **Optimize images sebelum upload**
+5. **Gunakan CDN untuk assets statis (optional)**
+
+### Learning Resources:
+- **CodeIgniter 4 Docs:** https://codeigniter.com/user_guide/
+- **PHP Best Practices:** https://phptherightway.com/
+- **MySQL Optimization:** https://dev.mysql.com/doc/
+- **Bootstrap Docs:** https://getbootstrap.com/docs/
+
+---
+
+## PENUTUP
+
+Selamat! Anda telah menyelesaikan roadmap 60 hari pengembangan Sistem PPDB TK Online. Roadmap ini dirancang untuk memberikan panduan step-by-step yang komprehensif, dari setup environment hingga deployment production.
+
+**Key Takeaways:**
+- Selalu mulai dengan fondasi yang kuat (database, autentikasi)
+- Testing di setiap fase pengembangan
+- Dokumentasi sama pentingnya dengan coding
+- Security dan performance harus diperhatikan sejak awal
+- Deployment bukan akhir, tapi awal dari maintenance
+
+**Next Steps:**
+1. Implementasikan fitur-fitur tambahan (SMS notification, online payment gateway)
+2. Improve UI/UX berdasarkan feedback user
+3. Tambahkan fitur analytics dan reporting lebih advanced
+4. Optimize performance based on real usage data
+5. Continue learning dan update teknologi
+
+Semoga sukses dalam pengembangan sistem PPDB TK Anda! 🚀
+
+---
+
+**Catatan:** Roadmap ini bersifat fleksibel dan bisa disesuaikan dengan kebutuhan dan kemampuan Anda. Yang terpenting adalah konsistensi dalam belajar dan mengembangkan sistem.
+
+**Support:** Jika menemui kendala, jangan ragu untuk:
+- Baca dokumentasi resmi CodeIgniter 4
+- Search di Stack Overflow
+- Join komunitas developer Indonesia
+- Konsultasi dengan senior developer
+
+**Good luck and happy coding! 💻**
